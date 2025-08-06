@@ -1,77 +1,59 @@
-# Import dependencies: requests, csv, BeautifulSoup
 import requests
-import csv
 from bs4 import BeautifulSoup
+import csv
+from urllib.parse import urljoin
 
+# Target book URL
+BOOK_URL = "http://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
+BASE_URL = "http://books.toscrape.com/"
 
-# URL of the webpage to scrape
-url = "http://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
-
-
-
-def scrape_book_data(url):
+def get_soup(url):
     response = requests.get(url)
-    response.raise_for_status()  # Raise an error for bad responses
-    soup = BeautifulSoup(response.content, 'html.parser')
-    # Extracting data from the soup object
-    
-    # Extracting UPC and prices
-    table = soup.find('table', class_='table table-striped')
-    table_data = {row.th.text: row.td.text for row in table.find_all('tr')}
-    upc = table_data.get('UPC')
-    price_incl_tax = table_data.get('Price (incl. tax)')
-    price_excl_tax = table_data.get('Price (excl. tax)')
-    quantity_available = table_data.get('Availability')
-    
-    # Book title
-    book_title = soup.find('div', class_='product_main').h1.text
+    return BeautifulSoup(response.content, 'html.parser')
 
-    # Book description
-    desc = soup.find('div', id='product_description')
-    product_description = desc.find_next_sibling('p').text if desc else ''
+def extract_book_data(url):
+    soup = get_soup(url)
 
-    # Category (breadcrumb nav)
-    category = soup.find('ul', class_='breadcrumb').find_all('li')[2].a.text.strip()
-    
-    # Review rating
-    rating_elem = soup.find('p', class_='star-rating')
-    rating = rating_elem.get('class', [])
-    review_rating = next((r for r in rating if r != 'star-rating'), '')
+    title = soup.find('h1').text
+    table = soup.find('table')
+    print("--Printing table--")
+    print(table)
+    rows = table.find_all('tr')
+    data = {row.find('th').text: row.find('td').text for row in rows}
+    print("--Printing data--")
+    print(data)
+    description_tag = soup.find('div', id='product_description')
+    description = description_tag.find_next_sibling('p').text if description_tag else 'No description'
 
-    # Image URL
-    img_relative = soup.find('img')['src']
-    image_url = 'https://books.toscrape.com/' + img_relative.lstrip('../')
-    
-    book_data = {
+    category = soup.select('ul.breadcrumb li a')[-1].text.strip()
+    rating = soup.find('p', class_='star-rating')['class'][1]
+    image_relative_url = soup.find('img')['src']
+    image_url = urljoin(BASE_URL, image_relative_url)
+
+    quantity_text = soup.find('p', class_='instock availability').text
+    quantity = ''.join(filter(str.isdigit, quantity_text))
+
+    return {
         "product_page_url": url,
-        "universal_product_code (upc)": upc,
-        "book_title": book_title,
-        "price_including_tax": price_incl_tax,
-        "price_excluding_tax": price_excl_tax,
-        "quantity_available": quantity_available,
-        "product_description": product_description,
+        "universal_product_code (upc)": data.get("UPC", ""),
+        "book_title": title,
+        "price_including_tax": data.get("Price (incl. tax)", ""),
+        "price_excluding_tax": data.get("Price (excl. tax)", ""),
+        "quantity_available": quantity,
+        "product_description": description,
         "category": category,
-        "review_rating": review_rating,
-        "image_url": image_url,
+        "review_rating": rating,
+        "image_url": image_url
     }
-    return book_data
 
-def write_to_csv(data, filename='book_data.csv'):
-    fieldnames = [
-        "product_page_url", "universal_product_code (upc)", "book_title",
-        "price_including_tax", "price_excluding_tax", "quantity_available",
-        "product_description", "category", "review_rating", "image_url"
-    ]
-    with open(filename, mode='w', newline='', encoding='utf-8') as f:
+def write_to_csv(book_data, filename='book_data.csv'):
+    fieldnames = list(book_data.keys())
+    with open(filename, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerow(data)
+        writer.writerow(book_data)
 
 if __name__ == "__main__":
-    url = "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"  # sample product
-    data = scrape_book_data(url)
+    data = extract_book_data(BOOK_URL)
     write_to_csv(data)
-    print("Book data scraped and saved to book_data.csv")
-    
-    
-
+    print("Book data written to book_data.csv")
