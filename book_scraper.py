@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import csv
 from urllib.parse import urljoin
+import os
 
 # Target book URL
 BOOK_URL = "http://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
@@ -16,12 +17,9 @@ def extract_book_data(url):
 
     title = soup.find('h1').text
     table = soup.find('table')
-    print("--Printing table--")
-    print(table)
     rows = table.find_all('tr')
     data = {row.find('th').text: row.find('td').text for row in rows}
-    print("--Printing data--")
-    print(data)
+    
     description_tag = soup.find('div', id='product_description')
     description = description_tag.find_next_sibling('p').text if description_tag else 'No description'
 
@@ -47,13 +45,15 @@ def extract_book_data(url):
     }
 
 def write_to_csv(book_data, filename='book_data.csv'):
+    # Always save in the "data" folder
+    filepath = os.path.join("data", filename)
     fieldnames = list(book_data.keys())
-    with open(filename, 'w', newline='', encoding='utf-8') as f:
+    with open(filepath, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerow(book_data)
+    print(f"Book data written to {filepath}")
 
 if __name__ == "__main__":
     data = extract_book_data(BOOK_URL)
     write_to_csv(data)
-    print("Book data written to book_data.csv")

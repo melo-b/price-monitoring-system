@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from book_scraper import extract_book_data
 from category_scraper import get_category_book_urls
+import csv
 
 BASE_URL = "http://books.toscrape.com/"
 INDEX_URL = BASE_URL + "index.html"
@@ -49,17 +50,18 @@ def scrape_all_categories():
                 books_data.append(data)
 
         if books_data:
+            # Always save CSVs in the "data" folder
             filename = f"{sanitize_filename(category_name)}.csv"
+            output_path = os.path.join("data", filename)
+
             keys = books_data[0].keys()
-            with open(filename, 'w', newline='', encoding='utf-8') as f:
-                import csv
+            with open(output_path, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=keys)
                 writer.writeheader()
                 writer.writerows(books_data)
-            print(f"✅ Data for '{category_name}' written to '{filename}'")
+            print(f"✅ Data for '{category_name}' written to '{output_path}'")
         else:
             print(f"No books found in category: {category_name}")
 
 if __name__ == "__main__":
     scrape_all_categories()
-
