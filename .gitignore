@@ -1,9 +1,20 @@
+# Ignore virtual environment
 venv/
+.env/
+
+# Ignore Python cache
 __pycache__/
 *.pyc
 *.pyo
-*.pyd
-*.sqlite3
-*.log
-*.env
+
+# Ignore data outputs (CSV and images)
+data/*.csv
+data/images/*
+*.csv
+*.jpg
+*.jpeg
+*.png
+
+# Ignore system files
 .DS_Store
+Thumbs.db
